@@ -28,10 +28,10 @@ class HintWindowController:  NSWindowController, NSWindowDelegate, CopyDelegate,
         
     init(_ rect: NSRect) {
         let window = HintWindow(contentRect: rect, styleMask: [.resizable], backing: .buffered, defer: false)
-    
+
         self.hintWindow = window
         super.init(window: window)
-        
+
         // TODO: use instance method to initialize this
         self.pinToDesktop = defaultPinToDesktop;
         if (self.pinToDesktop) {
@@ -39,36 +39,83 @@ class HintWindowController:  NSWindowController, NSWindowDelegate, CopyDelegate,
         } else {
             window.collectionBehavior = [.canJoinAllSpaces]
         }
-        
+
         self.shouldSetBorderlessMode(self.isBorderless);
-        
+
         window.delegate = self
         window.copyDelegate = self
-        
+
+        self.setupMenu()
+    }
+
+    /**
+     Initialize a hint from an existing image (loaded from file or other source).
+     */
+    convenience init(fromImage image: CGImage) {
+        // Calculate initial window size based on image dimensions
+        let imageWidth = CGFloat(image.width)
+        let imageHeight = CGFloat(image.height)
+
+        // Start with the image's natural size, but constrain to reasonable bounds
+        let maxInitialSize: CGFloat = 800
+        var windowWidth = imageWidth
+        var windowHeight = imageHeight
+
+        // Scale down if needed
+        if windowWidth > maxInitialSize || windowHeight > maxInitialSize {
+            let scale = min(maxInitialSize / windowWidth, maxInitialSize / windowHeight)
+            windowWidth *= scale
+            windowHeight *= scale
+        }
+
+        // Center the window on the main screen
+        guard let screen = NSScreen.main else {
+            self.init(NSRect(x: 100, y: 100, width: windowWidth, height: windowHeight))
+            return
+        }
+
+        let screenFrame = screen.visibleFrame
+        let originX = screenFrame.midX - windowWidth / 2
+        let originY = screenFrame.midY - windowHeight / 2
+        let windowRect = NSRect(x: originX, y: originY, width: windowWidth, height: windowHeight)
+
+        self.init(windowRect)
+
+        // Store the image
+        self.screenshot = image
+
+        // Set up the window to display the image
+        self.setupImageView()
+    }
+
+    /**
+     Sets up the menu for the hint window.
+     */
+    private func setupMenu() {
         // Initialize the menu
         // TODO: put this in its own method
         let menu = NSMenu()
-        
+
         ///
         /// These menu items are commands that can be taken on the hint
         ///
-        
+
         let copyItem = menu.addItem(withTitle: "Copy", action:#selector(self.menuCopyHandler(_:)), keyEquivalent: "C")
         copyItem.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: nil)
         copyItem.keyEquivalentModifierMask = [.command]
         copyItem.target = self
-        
+
         let copyTextItem = menu.addItem(withTitle: "Copy Text", action:#selector(self.menuCopyTextHandler(_:)), keyEquivalent: "X")
         copyTextItem.image = NSImage(systemSymbolName: "text.viewfinder", accessibilityDescription: nil)
         copyTextItem.keyEquivalentModifierMask = [.command]
         copyTextItem.target = self
-        
+
         menu.addItem(NSMenuItem.separator())
-        
+
         ///
         /// These menu items represent per-hint settings that can be toggled on and off.
         ///
-        
+
         let borderlessModeItem = menu.addItem(withTitle: "Hide Borders", action:#selector(self.borderlessModeHandler(_:)), keyEquivalent: "B")
         borderlessModeItem.image = NSImage(systemSymbolName: "square.dashed.inset.fill", accessibilityDescription: nil)
         borderlessModeItem.target = self
@@ -80,23 +127,23 @@ class HintWindowController:  NSWindowController, NSWindowDelegate, CopyDelegate,
         showItem.state = self.pinToDesktop ? .off : .on
         showItem.target = self
         self.allDesktopsMenuItem = showItem
-        
+
         menu.addItem(NSMenuItem.separator())
-        
+
         ///
         /// These menu items are for using the hint elsewhere (saving, exporting, etc.)
         ///
-        
+
         let saveAsItem = menu.addItem(withTitle: "Save As...", action:#selector(self.menuSaveAsHandler(_:)), keyEquivalent: "")
         saveAsItem.image = NSImage(systemSymbolName: "square.and.arrow.down", accessibilityDescription: nil)
         saveAsItem.target = self;
-        
+
         let openInPreviewItem = menu.addItem(withTitle: "Open", action:#selector(self.menuOpenWithPreviewHandler(_:)), keyEquivalent: "")
         openInPreviewItem.image = NSImage(systemSymbolName: "square.and.arrow.up", accessibilityDescription: nil)
         openInPreviewItem.target = self;
-        
+
         menu.addItem(NSMenuItem.separator())
-        
+
         ///
         /// The "close" menu item lives a little separate, just to avoid accidental clicks
         ///
@@ -104,8 +151,35 @@ class HintWindowController:  NSWindowController, NSWindowDelegate, CopyDelegate,
         closeItem.image =  NSImage(systemSymbolName: "minus.circle", accessibilityDescription: nil)
         closeItem.target = self
 
-        
-        window.menu = menu
+
+        hintWindow.menu = menu
+    }
+
+    /**
+     Sets up the image view to display the loaded screenshot.
+     Called after loading an image from a file.
+     */
+    private func setupImageView() {
+        guard let screenshot = self.screenshot else { return }
+        guard let window = self.window else { return }
+
+        // Make sure the window keeps its aspect ratio when resizing
+        window.aspectRatio = window.frame.size
+
+        // Make an image and an imageview to put the screenshot in
+        let image = NSImage(cgImage: screenshot, size: .zero)
+        image.resizingMode = .stretch
+        let imageView = WindowDraggableImageView(frame: NSRect(origin: .zero, size: window.frame.size))
+        imageView.image = image
+
+        // Make sure the imageView fills the window
+        imageView.autoresizingMask = [.height, .width]
+        // and that it will scale larger than its original size
+        imageView.imageScaling = .scaleProportionallyUpOrDown
+
+        window.level = .floating
+        window.isOpaque = true
+        window.contentView?.addSubview(imageView)
     }
     
     //

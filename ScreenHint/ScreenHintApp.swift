@@ -168,7 +168,14 @@ class ScreenHintAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             keyEquivalent: ""
         )
         clearHintItem.image = NSImage(systemSymbolName: "rectangle.stack.badge.minus", accessibilityDescription: nil)
-        
+
+        let openImageItem = menu.addItem(
+            withTitle: "Open Image...",
+            action: #selector(openImage(_:)),
+            keyEquivalent: "O"
+        )
+        openImageItem.image = NSImage(systemSymbolName: "photo.badge.plus", accessibilityDescription: nil)
+
         let settingsItem = menu.addItem(
             withTitle: "Settings...",
             action: #selector(showSettings(_:)),
@@ -271,7 +278,76 @@ class ScreenHintAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         })
         self.hints = []
     }
-    
+
+    /**
+     Opens a file picker to select image(s) to pin as hints.
+     */
+    @objc func openImage(_ sender: AnyObject?) {
+        let openPanel = NSOpenPanel()
+        openPanel.level = .screenSaver
+        openPanel.canChooseFiles = true
+        openPanel.canChooseDirectories = false
+        openPanel.allowsMultipleSelection = true
+        openPanel.allowedContentTypes = [.image]
+        openPanel.message = "Select image(s) to pin as hints"
+
+        openPanel.begin { response in
+            if response == .OK {
+                for url in openPanel.urls {
+                    self.createHintFromImageFile(url: url)
+                }
+            }
+        }
+    }
+
+    /**
+     Loads an image from a file and displays it as a hint.
+     */
+    func createHintFromImageFile(url: URL) {
+        // Request access to the file (needed for sandboxed apps)
+        guard url.startAccessingSecurityScopedResource() else {
+            let alert = NSAlert()
+            alert.messageText = "Cannot access file"
+            alert.informativeText = "ScreenHint cannot access the file at \(url.path)"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
+        }
+        defer { url.stopAccessingSecurityScopedResource() }
+
+        // Load the image from the file
+        guard let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+            let alert = NSAlert()
+            alert.messageText = "Cannot load image"
+            alert.informativeText = "The file at \(url.path) is not a valid image file."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
+        }
+
+        guard let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) else {
+            let alert = NSAlert()
+            alert.messageText = "Cannot load image"
+            alert.informativeText = "Failed to load image data from \(url.path)"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
+        }
+
+        // Create and display the hint
+        let hint = HintWindowController(fromImage: cgImage)
+        hint.showWindow(nil)
+        self.hints.append(hint)
+
+        // Clear out closed hints
+        self.hints = self.hints.filter({ rect in
+            rect.window?.isVisible ?? false
+        })
+    }
+
     /**
      Given a root SwiftUI view, put it in a window and show it. The window will resize itself based on the size of the provided view.
      */
