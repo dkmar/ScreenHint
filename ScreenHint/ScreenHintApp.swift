@@ -168,7 +168,15 @@ class ScreenHintAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             keyEquivalent: ""
         )
         clearHintItem.image = NSImage(systemSymbolName: "rectangle.stack.badge.minus", accessibilityDescription: nil)
-        
+
+        // TEST MENU ITEM - Remove this later
+        let testPinImageItem = menu.addItem(
+            withTitle: "TEST: Pin Test Image",
+            action: #selector(testPinImage(_:)),
+            keyEquivalent: "T"
+        )
+        testPinImageItem.image = NSImage(systemSymbolName: "photo.badge.plus", accessibilityDescription: nil)
+
         let settingsItem = menu.addItem(
             withTitle: "Settings...",
             action: #selector(showSettings(_:)),
@@ -271,7 +279,80 @@ class ScreenHintAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         })
         self.hints = []
     }
-    
+
+    /**
+     TEST METHOD - Loads a hardcoded test image.
+     To use this, replace the path below with an absolute path to any image file on your system.
+     Example: /Users/yourname/Desktop/test.png
+     */
+    @objc func testPinImage(_ sender: AnyObject?) {
+        // CHANGE THIS PATH to test with your own image!
+        let testImagePath = "/Users/yourname/Desktop/test.png"
+
+        let url = URL(fileURLWithPath: testImagePath)
+
+        // Check if the file exists
+        if !FileManager.default.fileExists(atPath: testImagePath) {
+            let alert = NSAlert()
+            alert.messageText = "Test image not found"
+            alert.informativeText = "Please edit testPinImage() in ScreenHintApp.swift and set testImagePath to a valid image file path.\n\nCurrent path: \(testImagePath)"
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
+        }
+
+        createHintFromImageFile(url: url)
+    }
+
+    /**
+     Loads an image from a file and displays it as a hint.
+     */
+    func createHintFromImageFile(url: URL) {
+        // Request access to the file (needed for sandboxed apps)
+        guard url.startAccessingSecurityScopedResource() else {
+            let alert = NSAlert()
+            alert.messageText = "Cannot access file"
+            alert.informativeText = "ScreenHint cannot access the file at \(url.path)"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
+        }
+        defer { url.stopAccessingSecurityScopedResource() }
+
+        // Load the image from the file
+        guard let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+            let alert = NSAlert()
+            alert.messageText = "Cannot load image"
+            alert.informativeText = "The file at \(url.path) is not a valid image file."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
+        }
+
+        guard let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) else {
+            let alert = NSAlert()
+            alert.messageText = "Cannot load image"
+            alert.informativeText = "Failed to load image data from \(url.path)"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
+        }
+
+        // Create and display the hint
+        let hint = HintWindowController(fromImage: cgImage)
+        hint.showWindow(nil)
+        self.hints.append(hint)
+
+        // Clear out closed hints
+        self.hints = self.hints.filter({ rect in
+            rect.window?.isVisible ?? false
+        })
+    }
+
     /**
      Given a root SwiftUI view, put it in a window and show it. The window will resize itself based on the size of the provided view.
      */
