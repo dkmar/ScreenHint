@@ -169,13 +169,12 @@ class ScreenHintAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         )
         clearHintItem.image = NSImage(systemSymbolName: "rectangle.stack.badge.minus", accessibilityDescription: nil)
 
-        // TEST MENU ITEM - Remove this later
-        let testPinImageItem = menu.addItem(
-            withTitle: "TEST: Pin Test Image",
-            action: #selector(testPinImage(_:)),
-            keyEquivalent: "T"
+        let openImageItem = menu.addItem(
+            withTitle: "Open Image...",
+            action: #selector(openImage(_:)),
+            keyEquivalent: "O"
         )
-        testPinImageItem.image = NSImage(systemSymbolName: "photo.badge.plus", accessibilityDescription: nil)
+        openImageItem.image = NSImage(systemSymbolName: "photo.badge.plus", accessibilityDescription: nil)
 
         let settingsItem = menu.addItem(
             withTitle: "Settings...",
@@ -281,10 +280,9 @@ class ScreenHintAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     /**
-     TEST METHOD - Opens a file picker to select an image to pin.
-     This provides an easy way to test the image loading functionality.
+     Opens a file picker to select image(s) to pin as hints.
      */
-    @objc func testPinImage(_ sender: AnyObject?) {
+    @objc func openImage(_ sender: AnyObject?) {
         let openPanel = NSOpenPanel()
         openPanel.level = .screenSaver
         openPanel.canChooseFiles = true
