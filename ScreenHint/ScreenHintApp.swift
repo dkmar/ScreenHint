@@ -281,28 +281,25 @@ class ScreenHintAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     /**
-     TEST METHOD - Loads a hardcoded test image.
-     To use this, replace the path below with an absolute path to any image file on your system.
-     Example: /Users/yourname/Desktop/test.png
+     TEST METHOD - Opens a file picker to select an image to pin.
+     This provides an easy way to test the image loading functionality.
      */
     @objc func testPinImage(_ sender: AnyObject?) {
-        // CHANGE THIS PATH to test with your own image!
-        let testImagePath = "/Users/yourname/Desktop/test.png"
+        let openPanel = NSOpenPanel()
+        openPanel.level = .screenSaver
+        openPanel.canChooseFiles = true
+        openPanel.canChooseDirectories = false
+        openPanel.allowsMultipleSelection = true
+        openPanel.allowedContentTypes = [.image]
+        openPanel.message = "Select image(s) to pin as hints"
 
-        let url = URL(fileURLWithPath: testImagePath)
-
-        // Check if the file exists
-        if !FileManager.default.fileExists(atPath: testImagePath) {
-            let alert = NSAlert()
-            alert.messageText = "Test image not found"
-            alert.informativeText = "Please edit testPinImage() in ScreenHintApp.swift and set testImagePath to a valid image file path.\n\nCurrent path: \(testImagePath)"
-            alert.alertStyle = .informational
-            alert.addButton(withTitle: "OK")
-            alert.runModal()
-            return
+        openPanel.begin { response in
+            if response == .OK {
+                for url in openPanel.urls {
+                    self.createHintFromImageFile(url: url)
+                }
+            }
         }
-
-        createHintFromImageFile(url: url)
     }
 
     /**
