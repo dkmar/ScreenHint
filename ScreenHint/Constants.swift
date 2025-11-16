@@ -10,6 +10,7 @@ import KeyboardShortcuts
 
 extension KeyboardShortcuts.Name {
     static let createNewHint = Self("createNewHint")
+    static let toggleHintsVisibility = Self("toggleHintsVisibility")
 }
 
 struct AppStorageKeys {

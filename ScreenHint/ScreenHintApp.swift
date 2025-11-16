@@ -18,6 +18,7 @@ class ScreenHintAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     
     // Status bar item
     var statusBarItem: NSStatusItem!
+    var toggleVisibilityMenuItem: NSMenuItem?
     
     // Secret Windows
     var swcs: [SecretWindowController] = []
@@ -32,9 +33,12 @@ class ScreenHintAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var mouseDragMonitor: Any?
     var keyDownMonitor: Any?
     
-    // The ID of our launcher app    
+    // The ID of our launcher app
     @AppStorage(AppStorageKeys.openAtLogin) private var openAtLogin = false
     @Published var hints: [HintWindowController] = []
+
+    // Track whether hints are currently visible or hidden
+    var hintsVisible: Bool = true
     
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         
@@ -86,6 +90,11 @@ class ScreenHintAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self.captureHint(nil)
         }
 
+        // Bind global keyboard shortcut for toggling hints visibility
+        KeyboardShortcuts.onKeyUp(for: .toggleHintsVisibility) { [self] in
+            self.toggleHintsVisibility(nil)
+        }
+
         // Initialize the status bar menu
         self.createMenu()
     }
@@ -125,6 +134,17 @@ class ScreenHintAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         if let hotkey = self.hotKey {
             hotkey.isPaused = true
+        }
+
+        // Update toggle visibility menu item text and icon based on current state
+        if let toggleItem = self.toggleVisibilityMenuItem {
+            if self.hintsVisible {
+                toggleItem.title = "Hide All Hints"
+                toggleItem.image = NSImage(systemSymbolName: "eye.slash", accessibilityDescription: nil)
+            } else {
+                toggleItem.title = "Show All Hints"
+                toggleItem.image = NSImage(systemSymbolName: "eye", accessibilityDescription: nil)
+            }
         }
     }
     
@@ -168,6 +188,14 @@ class ScreenHintAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             keyEquivalent: ""
         )
         clearHintItem.image = NSImage(systemSymbolName: "rectangle.stack.badge.minus", accessibilityDescription: nil)
+
+        let toggleVisibilityItem = menu.addItem(
+            withTitle: "Hide All Hints",
+            action: #selector(toggleHintsVisibility(_:)),
+            keyEquivalent: ""
+        )
+        toggleVisibilityItem.image = NSImage(systemSymbolName: "eye.slash", accessibilityDescription: nil)
+        self.toggleVisibilityMenuItem = toggleVisibilityItem
 
         let openImageItem = menu.addItem(
             withTitle: "Open Image...",
@@ -277,6 +305,37 @@ class ScreenHintAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             rect.window?.close()
         })
         self.hints = []
+    }
+
+    /**
+     Toggles visibility of all hints.
+     */
+    @objc func toggleHintsVisibility(_ sender: AnyObject?) {
+        if self.hintsVisible {
+            self.hideAllHints()
+        } else {
+            self.showAllHints()
+        }
+    }
+
+    /**
+     Hides all hints.
+     */
+    func hideAllHints() {
+        self.hints.forEach({ hint in
+            hint.window?.orderOut(nil)
+        })
+        self.hintsVisible = false
+    }
+
+    /**
+     Shows all hints.
+     */
+    func showAllHints() {
+        self.hints.forEach({ hint in
+            hint.window?.orderFront(nil)
+        })
+        self.hintsVisible = true
     }
 
     /**

@@ -30,17 +30,26 @@ struct SettingsView: View {
             Divider().padding(.vertical)
             
             HStack{
-                Text("Global Shortcut")
+                Text("Global Shortcuts")
                     .font(.system(.title2, design: .rounded ))
                     .fontWeight(.semibold)
                 Spacer()
             }
             Form {
-                KeyboardShortcuts.Recorder(for: .createNewHint)
+                HStack {
+                    Text("Create New Hint:")
+                    Spacer()
+                    KeyboardShortcuts.Recorder(for: .createNewHint)
+                }
+                HStack {
+                    Text("Toggle Hints Visibility:")
+                    Spacer()
+                    KeyboardShortcuts.Recorder(for: .toggleHintsVisibility)
+                }
             }
         }
         .padding(.horizontal)
-        .frame(width: 350, height: 250)
+        .frame(width: 350, height: 300)
         .onChange(of: openAtLogin, perform: { shouldOpenAtLogin in
             if (shouldOpenAtLogin) {
                 SMLoginItemSetEnabled(AppIds.launcher as CFString, true)
